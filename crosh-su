@@ -1,0 +1,180 @@
+#!/usr/bin/env ruby
+# CroshSU multi-call script
+require 'io/console'
+require 'socket'
+require 'pty'
+require 'fileutils'
+require 'json'
+
+SOCKET_PATH = '/tmp/sudo-server'
+
+def forward_io(srcIO, dstIO)
+  Thread.new do
+    until srcIO.closed?
+      begin
+        data = srcIO.read_nonblock(102400)
+        warn "[daemon] Got #{data.bytesize} bytes from #{srcIO}"
+        dstIO.write(data)
+      rescue IO::WaitReadable
+        begin
+          IO.select([srcIO])
+        rescue IOError
+        end
+      end
+    end
+  end
+end
+
+def send_event(sock, event, args = {}) = sock.puts({ event: event }.merge(args).to_json)
+
+def daemon_mode(argv)
+  # create unix socket
+  @server = UNIXServer.new(SOCKET_PATH)
+  FileUtils.chmod(0o600, SOCKET_PATH)
+
+  Socket.accept_loop(@server) do |sock, _|
+    Thread.new do
+      # receive client's stdin/stdout/stderr io from client
+      client_stdin, client_stdout, client_stderr = [sock.recv_io, sock.recv_io, sock.recv_io]
+      client_request = JSON.parse(sock.gets, symbolize_names: true)
+
+      if client_stdout.isatty && client_stderr.isatty
+        # if client's stdout is a tty (not a pipe/file), create a pty for process
+        @pty_master, @pty_slave = PTY.open
+
+        # forward client input to pty + pty output to client
+        forward_io(client_stdin, @pty_master)
+        forward_io(@pty_master, client_stdout)
+      end
+
+      warn "[daemon] Spawn process: #{client_request[:cmd_argv]}"
+
+      pid = fork do
+        if client_stdout.isatty && client_stderr.isatty
+          # if client's stdout is a tty (not a pipe/file), attach to the pty opened by PTY.open
+          [$stdin, $stdout, $stderr].each {|io| io.reopen(@pty_slave) }
+
+          # set new process group
+          Process.setsid
+
+          # 0x540E: TIOCSCTTY
+          # set controlling terminal to the pty
+          @pty_master.ioctl(0x540E, 0)
+        else
+          # attach to stdin/stdout/stderr of client directly
+          $stdin.reopen(client_stdin)
+          $stdout.reopen(client_stdout)
+          $stderr.reopen(client_stderr)
+        end
+
+        Dir.chdir(client_request[:cwd])
+        ENV.merge!(client_request[:env].transform_keys(&:to_s))
+        exec('/usr/bin/sudo', *client_request[:cmd_argv])
+      end
+
+      # listen to client events
+      Thread.new do
+        until sock.closed?
+          event = JSON.parse(sock.gets, symbolize_names: true)
+
+          case event[:event]
+          when 'set_termsize' # when client tty resized
+            rows, cols = event[:newsize]
+
+            # 0x5414: TIOCSWINSZ
+            warn "[daemon] Resize terminal to #{rows} rows, #{cols} cols"
+            warn "[daemon] Sending TIOCSWINSZ loctl to PTY..."
+
+            @pty_master.ioctl(0x5414, [rows, cols, 0, 0].pack('S!*'))
+          end
+        end
+      end
+
+      # wait for process end and send the exit status back to client
+      Process.waitpid(pid)
+      send_event(sock, 'cmd_terminated', { cmd_exit_status: $?.exitstatus })
+    ensure
+      @pty_master.close if @pty_master
+      @pty_slave.close if @pty_slave
+      sock.close
+    end
+  end
+ensure
+  @server.close
+  FileUtils.rm_f(SOCKET_PATH)
+end
+
+def client_mode(argv)
+  # connect to daemon
+  sock      = UNIXSocket.open(SOCKET_PATH)
+  @tty_attr = `stty -g`.chomp
+
+  # disable terminal echo
+  system('stty', 'raw', '-echo')
+
+  # send stdin/stdout/stderr to daemon
+  sock.send_io($stdin)
+  sock.send_io($stdout)
+  sock.send_io($stderr)
+
+  # let daemon to take over stdin
+  $stdin.close
+
+  request = { cmd_argv: argv, env: ENV.to_h, cwd: Dir.pwd }
+  sock.puts(request.to_json)
+
+  # listen to terminal resize event
+  trap('WINCH') { send_event(sock, 'set_termsize', { newsize: IO.console.winsize }) }
+  Process.kill('WINCH', Process.pid)
+
+  # listen to client events
+  until sock.closed?
+    event = JSON.parse(sock.gets, symbolize_names: true)
+
+    case event[:event]
+    when 'cmd_terminated'       # process exited
+      system('stty', @tty_attr) # restore tty attributes on program exit
+      warn "[client] Process exited with status #{event[:cmd_exit_status]}"
+      exit(event[:cmd_exit_status])
+    end
+  end
+ensure
+  # restore tty attributes
+  system('stty', @tty_attr)
+end
+
+# resolve command arguments
+case File.basename($0)
+when 'crosh-su'
+  case ARGV[0]
+  when '-d', '--daemon'
+    daemon_mode(ARGV[1..-1])
+  when '-c', '--client'
+    client_mode(ARGV[1..-1])
+  when '-h', '--help'
+    warn <<~EOT
+      CroshSU multi-purpose script
+
+      Usage: crosh-su [mode]
+             crosh-su -h|--help
+             crosh-su -V|--version
+
+      Available modes:
+        --daemon: Run as daemon mode, listen incoming requests at #{SOCKET_PATH}
+        --client: Run as client mode, pass all given command arguments to daemon
+
+    EOT
+  when '-V', '--version'
+    warn 'CroshSU version 1.0'
+  else
+    warn <<~EOT
+      crosh-su: #{ARGV[0]}: unknown option
+
+      Run 'crosh-su --help' for usage.
+    EOT
+  end
+when 'sudod'
+  daemon_mode(ARGV)
+when 'sudo'
+  client_mode(ARGV)
+end

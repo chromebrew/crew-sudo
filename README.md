@@ -1,2 +1,3 @@
 # CroshSU
-Make sudo works properly on ChromeOS crosh shell by redirecting sudo calls to VT-2
+A root solution for ChromeOS crosh shell by redirecting sudo calls to VT-2
+
