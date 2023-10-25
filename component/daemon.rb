@@ -11,7 +11,7 @@ def runas_daemon(argv)
   Process.daemon(false, true)
   Process.setproctitle('sudo-server daemon process')
 
-  message "Daemon started with PID #{Process.pid}", loglevel: :warning
+  message "crew-sudo daemon started with PID #{Process.pid}", loglevel: :warning
 
   # redirect output to log
   $log = File.open(DAEMON_LOG_PATH, 'w')
