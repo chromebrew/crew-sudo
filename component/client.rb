@@ -62,7 +62,7 @@ def runas_client(argv)
     end
   end
 rescue Errno::ENOENT
-  message <<~EOT
+  message <<~EOT, loglevel: :warning
     Cannot connect to crew-sudo daemon, is the daemon running?
 
     Hint: Enter VT-2 shell by pressing Ctrl + Alt + ->,  the daemon will start
@@ -72,5 +72,5 @@ rescue Errno::ENOENT
   exit(1)
 ensure
   restore_console if is_tty
-  socket.close
+  socket.close if defined?(socket)
 end
