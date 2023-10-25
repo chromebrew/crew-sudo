@@ -61,6 +61,15 @@ def runas_client(argv)
       exit(event[:exitstatus])
     end
   end
+rescue Errno::ENOENT
+  message <<~EOT
+    Cannot connect to crew-sudo daemon, is the daemon running?
+
+    Hint: Enter VT-2 shell by pressing Ctrl + Alt + ->,  the daemon will start
+          automatically after you log in with user 'chronos'
+  EOT
+
+  exit(1)
 ensure
   restore_console if is_tty
   socket.close
