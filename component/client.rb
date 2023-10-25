@@ -72,5 +72,5 @@ rescue Errno::ENOENT
   exit(1)
 ensure
   restore_console if is_tty
-  socket.close if defined?(socket)
+  socket&.close
 end
