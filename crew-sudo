@@ -1,0 +1,42 @@
+#!/usr/bin/env ruby
+# sudo-server multi-call script
+require_relative 'component/client'
+require_relative 'component/daemon'
+
+$verbose = ENV['CREW_SUDO_VERBOSE'].eql?('1')
+
+# resolve command arguments
+case PROGNAME
+when 'crew-sudo'
+  case ARGV[0]
+  when '-d', '--daemon'
+    runas_daemon(ARGV[1..-1])
+  when '-c', '--client'
+    runas_client(ARGV[1..-1])
+  when '-h', '--help'
+    warn <<~EOT
+      #{File.basename($0)} multi-purpose launcher
+
+      Usage: #{PROGNAME} [mode]
+             #{PROGNAME} -h|--help
+             #{PROGNAME} -V|--version
+
+      Available modes:
+        --daemon: Run as daemon mode, listen incoming requests at #{SOCKET_PATH}
+        --client: Run as client mode, pass all given command arguments to daemon
+
+    EOT
+  when '-V', '--version'
+    warn "#{PROGNAME} version 1.0"
+  else
+    warn <<~EOT
+      #{PROGNAME}: Unknown option.
+
+      Run '#{PROGNAME} --help' for usage.
+    EOT
+  end
+when 'sudod'
+  runas_daemon(ARGV)
+when 'sudo'
+  runas_client(ARGV)
+end
