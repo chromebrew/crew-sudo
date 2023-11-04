@@ -46,7 +46,7 @@ class PTYHelper
 
   def forward_io(srcIO, dstIO)
     Thread.new do
-      until srcIO.closed?
+      until srcIO.closed? || srcIO.eof?
         begin
           dstIO.write(srcIO.read_nonblock(131072))
         rescue IO::WaitReadable

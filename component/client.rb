@@ -11,8 +11,8 @@ end
 
 def runas_client(argv)
   $mode     = :client
-  $tty_attr = %x[/bin/stty -g].chomp
   is_tty    = $stdin.isatty && $stdout.isatty && $stderr.isatty
+  $tty_attr = %x[/bin/stty -g].chomp if is_tty
   socket    = UNIXSocket.open(SOCKET_PATH) # connect to daemon
 
   # send stdin/stdout/stderr to daemon
