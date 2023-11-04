@@ -65,7 +65,7 @@ rescue Errno::ENOENT
   message <<~EOT, loglevel: :warning
     Cannot connect to crew-sudo daemon, is the daemon running?
 
-    Hint: Enter VT-2 shell by pressing Ctrl + Alt + ->,  the daemon will start
+    Hint: Enter VT-2 shell by pressing Ctrl + Alt + ->, the daemon will start
           automatically after you log in with user 'chronos'
   EOT
 
