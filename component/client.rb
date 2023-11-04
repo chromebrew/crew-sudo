@@ -12,7 +12,7 @@ end
 def runas_client(argv)
   $mode     = :client
   $tty_attr = %x[/bin/stty -g].chomp
-  is_tty    = $stdout.isatty && $stderr.isatty
+  is_tty    = $stdin.isatty && $stdout.isatty && $stderr.isatty
   socket    = UNIXSocket.open(SOCKET_PATH) # connect to daemon
 
   # send stdin/stdout/stderr to daemon
@@ -29,7 +29,7 @@ def runas_client(argv)
   })
 
   # listen to terminal resize event
-  trap('WINCH') { send_event(socket, 'termResize', { newsize: IO.console.winsize }) }
+  trap('WINCH') { send_event(socket, 'termResize', { newsize: IO.console.winsize }) } if is_tty
 
   # ignore following signals
   %w[HUP PIPE QUIT TERM INT].each {|sig| trap(sig) {} }

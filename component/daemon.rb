@@ -33,7 +33,7 @@ def runas_daemon(argv)
 
       client_request = JSON.parse(socket.gets, symbolize_names: true)
       cmdline        = ['/usr/bin/sudo'].concat(client_request[:arg])
-      open_pty       = client_stdout.isatty && client_stderr.isatty
+      open_pty       = client_stdin.isatty && client_stdout.isatty && client_stderr.isatty
       process_env    = client_request[:env].transform_keys(&:to_s)
 
       if open_pty
