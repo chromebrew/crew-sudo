@@ -35,8 +35,6 @@ when 'crew-sudo'
       Run '#{PROGNAME} --help' for usage.
     EOT
   end
-when 'sudod'
-  runas_daemon(ARGV)
 when 'sudo'
   runas_client(ARGV)
 end

@@ -8,7 +8,8 @@ def runas_daemon(argv)
   $mode = :daemon
 
   # daemonize
-  Process.daemon(false, true)
+  Process.daemon(false, true) unless ARGV.include?('--foreground')
+
   Process.setproctitle('sudo-server daemon process')
 
   warn "crew-sudo: Daemon started with PID #{Process.pid}"
