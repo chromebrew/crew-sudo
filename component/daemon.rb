@@ -10,7 +10,7 @@ def runas_daemon(argv)
   # daemonize
   Process.daemon(false, true) unless ARGV.include?('--foreground')
 
-  Process.setproctitle('sudo-server daemon process')
+  Process.setproctitle('crew-sudo daemon process')
 
   warn "crew-sudo: Daemon started with PID #{Process.pid}"
 
@@ -23,9 +23,20 @@ def runas_daemon(argv)
 
   [$log, $stdout, $stderr].each {|io| io.sync = true }
 
+  if Process.uid.zero?
+    message 'Daemon running with root permission.'
+  else
+    message "Daemon running under UID #{Process.uid}."
+  end
+
+  message "Started with PID #{Process.pid}"
+
   # create unix socket
   @server = UNIXServer.new(SOCKET_PATH)
-  File.chmod(0o600, SOCKET_PATH)
+  File.chmod(0o660, SOCKET_PATH)
+
+  # fix permission if we are running as root
+  File.chown(0, 1000, SOCKET_PATH) if Process.uid.zero?
 
   Socket.accept_loop(@server) do |socket, _|
     Thread.new do
