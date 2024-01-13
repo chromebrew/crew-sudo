@@ -25,6 +25,8 @@ It works in a similar way compared with popular Android root solutions like Magi
 
 All communication between the `sudo` server and client is done via Unix socket.
 
+![How it works](images/how-it-works.svg)
+
 ## What works currently
 - Send terminal input to command/send command output back to `crosh`
 - Handle terminal size events
