@@ -18,7 +18,7 @@ def runas_daemon(argv)
         message <<~EOT, loglevel: :error
           crew-sudo daemon (process #{File.read(PID_FILE_PATH)}) is already running.
 
-          Use `#{PROGNAME} --daemon --replace` to replace the running daemon.
+          Use `#{PROGNAME} daemon --replace` to replace the running daemon.
         EOT
       end
       exit 1

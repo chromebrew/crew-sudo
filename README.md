@@ -27,6 +27,27 @@ All communication between the `sudo` server and client is done via Unix socket.
 
 ![How it works](images/how-it-works.svg)
 
+## Usage
+```text
+sudo <command to execute or sudo options>
+---
+crew-sudo [command] <options>
+crew-sudo -h|--help
+crew-sudo -V|--version
+```
+
+|Command       |Description|
+|:-------------|:----------|
+|`client`      |Run as client mode, pass all given command arguments to daemon|
+|`daemon`      |Run as daemon mode, listen incoming requests at /tmp/crew-sudo.socket|
+|`stop-daemon` |Stop currently running crew-sudo daemon|
+
+|Options       |Description|
+|:-------------|:----------|
+|`--bashrc`    |Suppress "daemon is already running" error|
+|`--foreground`|Run crew-sudo daemon in foreground|
+|`--replace`   |Replace the currently running crew-sudo daemon|
+
 ## What works currently
 - Send terminal input to command/send command output back to `crosh`
 - Handle terminal size events
