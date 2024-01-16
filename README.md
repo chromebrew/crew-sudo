@@ -44,6 +44,8 @@ crew-sudo -V|--version
 |`daemon`      |Run as daemon mode, listen incoming requests at `/tmp/crew-sudo.socket`|
 |`stop-daemon` |Stop currently running `crew-sudo` daemon|
 
+---
+
 |Options       |Description|
 |:-------------|:----------|
 |`--bashrc`    |Suppress `daemon is already running` error|
