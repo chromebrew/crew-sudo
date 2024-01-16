@@ -56,3 +56,8 @@ crew-sudo -V|--version
 - Send terminal input to command/send command output back to `crosh`
 - Handle terminal size events
 - Sync exit code
+
+## License
+Copyright (C) 2013-2024 Chromebrew Authors
+
+This project including all of its source files is released under the terms of [GNU General Public License (version 3 or later)](http://www.gnu.org/licenses/gpl.txt).
