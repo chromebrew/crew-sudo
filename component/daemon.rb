@@ -14,7 +14,7 @@ def runas_daemon(argv)
       if IS_BASHRC
         warn "crew-sudo: Daemon started with PID #{File.read(PID_FILE_PATH)}"
       else
-        message <<~EOT, loglevel: error
+        message <<~EOT, loglevel: :error
           crew-sudo daemon (process #{File.read(PID_FILE_PATH)}) is already running.
 
           Use `#{PROGNAME} --daemon --replace` to replace the running daemon
@@ -31,8 +31,11 @@ def runas_daemon(argv)
   File.chmod(0o660, SOCKET_PATH)
 
   # daemonize
-  unless ARGV.include?('--foreground')
+  if ARGV.include?('--foreground')
+    warn "crew-sudo: Daemon started with PID #{Process.pid}"
+  else
     Process.daemon(false, true)
+    warn "crew-sudo: Daemon started with PID #{Process.pid}"
 
     # redirect output to log
     $log = File.open(DAEMON_LOG_PATH, 'w')
@@ -47,15 +50,13 @@ def runas_daemon(argv)
   Process.setproctitle('crew-sudo daemon process')
   File.write(PID_FILE_PATH, Process.pid)
 
-  warn "crew-sudo: Daemon started with PID #{Process.pid}"
+  message "Daemon running with PID #{Process.pid}"
 
-  if Process.uid.zero?
+  if Process.euid.zero?
     message 'Daemon running with root permission.'
   else
-    message "Daemon running under UID #{Process.uid}."
+    message "Daemon running under UID #{Process.euid}."
   end
-
-  message "Started with PID #{Process.pid}"
 
   Socket.accept_loop(@server) do |socket, _|
     client_pid, client_uid, client_gid = socket.getsockopt(:SOL_SOCKET, :SO_PEERCRED).unpack('L*')
