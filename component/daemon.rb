@@ -8,20 +8,22 @@ def runas_daemon(argv)
   $mode = :daemon
 
   # daemonize
-  Process.daemon(false, true) unless ARGV.include?('--foreground')
+  unless ARGV.include?('--foreground')
+    Process.daemon(false, true)
+
+    # redirect output to log
+    $log = File.open(DAEMON_LOG_PATH, 'w')
+
+    $stdin.reopen('/dev/null')
+    $stdout.reopen($log)
+    $stderr.reopen($log)
+
+    [$log, $stdout, $stderr].each {|io| io.sync = true }
+  end
 
   Process.setproctitle('crew-sudo daemon process')
 
   warn "crew-sudo: Daemon started with PID #{Process.pid}"
-
-  # redirect output to log
-  $log = File.open(DAEMON_LOG_PATH, 'w')
-
-  $stdin.reopen('/dev/null')
-  $stdout.reopen($log)
-  $stderr.reopen($log)
-
-  [$log, $stdout, $stderr].each {|io| io.sync = true }
 
   if Process.uid.zero?
     message 'Daemon running with root permission.'
