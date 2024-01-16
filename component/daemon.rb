@@ -5,7 +5,25 @@ require_relative '../lib/function'
 require_relative '../lib/pty_helper'
 
 def runas_daemon(argv)
-  $mode   = :daemon
+  $mode = :daemon
+
+  if File.exist?(SOCKET_PATH) && File.exist?(PID_FILE_PATH)
+    if ARGV.include?('--replace')
+      Process.kill('TERM', File.read(PID_FILE_PATH).to_i)
+    else
+      if IS_BASHRC
+        warn "crew-sudo: Daemon started with PID #{File.read(PID_FILE_PATH)}"
+      else
+        message <<~EOT, loglevel: error
+          crew-sudo daemon (process #{File.read(PID_FILE_PATH)}) is already running.
+
+          Use `#{PROGNAME} --daemon --replace` to replace the running daemon
+        EOT
+      end
+      exit 1
+    end
+  end
+
   @server = UNIXServer.new(SOCKET_PATH) # create unix socket
 
   # fix permission if we are running as root
@@ -27,6 +45,7 @@ def runas_daemon(argv)
   end
 
   Process.setproctitle('crew-sudo daemon process')
+  File.write(PID_FILE_PATH, Process.pid)
 
   warn "crew-sudo: Daemon started with PID #{Process.pid}"
 
@@ -113,4 +132,5 @@ def runas_daemon(argv)
 ensure
   @server.close
   File.delete(SOCKET_PATH) if File.exist?(SOCKET_PATH)
+  File.delete(PID_FILE_PATH) if File.exist?(PID_FILE_PATH)
 end
