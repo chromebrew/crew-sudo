@@ -5,7 +5,12 @@ require_relative '../lib/function'
 require_relative '../lib/pty_helper'
 
 def runas_daemon(argv)
-  $mode = :daemon
+  $mode   = :daemon
+  @server = UNIXServer.new(SOCKET_PATH) # create unix socket
+
+  # fix permission if we are running as root
+  File.chown(0, 1000, SOCKET_PATH) if Process.euid.zero?
+  File.chmod(0o660, SOCKET_PATH)
 
   # daemonize
   unless ARGV.include?('--foreground')
@@ -32,13 +37,6 @@ def runas_daemon(argv)
   end
 
   message "Started with PID #{Process.pid}"
-
-  # create unix socket
-  @server = UNIXServer.new(SOCKET_PATH)
-  File.chmod(0o660, SOCKET_PATH)
-
-  # fix permission if we are running as root
-  File.chown(0, 1000, SOCKET_PATH) if Process.uid.zero?
 
   Socket.accept_loop(@server) do |socket, _|
     client_pid, client_uid, client_gid = socket.getsockopt(:SOL_SOCKET, :SO_PEERCRED).unpack('L*')
