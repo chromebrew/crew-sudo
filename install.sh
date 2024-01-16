@@ -1,14 +1,14 @@
 #!/bin/bash -eu
 
-if [ ${EUID} != 0 ] && [ ! -w ${INSTALL_PREFIX} ]; then
-  echo "Please run this script as root." 2>&1
-  exit 1
-fi
-
 if [ -z "${CREW_DEST_PREFIX}" ]; then
   INSTALL_PREFIX="${CREW_DEST_PREFIX}"
 else
   : "${INSTALL_PREFIX:=/usr/local}"
+fi
+
+if [ ${EUID} != 0 ] && [ ! -w ${INSTALL_PREFIX} ]; then
+  echo "Please run this script as root." 2>&1
+  exit 1
 fi
 
 mkdir -p ${INSTALL_PREFIX}/lib
