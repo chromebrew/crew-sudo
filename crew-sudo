@@ -9,10 +9,19 @@ $verbose = ENV['CREW_SUDO_VERBOSE'].eql?('1')
 case PROGNAME
 when 'crew-sudo'
   case ARGV[0]
-  when '-d', '--daemon'
+  when 'daemon'
     runas_daemon(ARGV[1..-1])
-  when '-c', '--client'
+  when 'client'
     runas_client(ARGV[1..-1])
+  when 'stop-daemon'
+    exit(0) unless File.exist?(PID_FILE_PATH)
+    pid = File.read(PID_FILE_PATH)
+
+    begin
+      Process.kill('TERM', pid)
+      warn "crew-sudo: Daemon with PID #{pid} stopped"
+    rescue Errno::ESRCH
+    end
   when '-h', '--help'
     warn <<~EOT
       #{File.basename($0)} multi-purpose launcher
@@ -21,9 +30,10 @@ when 'crew-sudo'
              #{PROGNAME} -h|--help
              #{PROGNAME} -V|--version
 
-      Available modes:
-        --daemon: Run as daemon mode, listen incoming requests at #{SOCKET_PATH}
-        --client: Run as client mode, pass all given command arguments to daemon
+      Available commands:
+        daemon       Run as daemon mode, listen incoming requests at #{SOCKET_PATH}
+        client       Run as client mode, pass all given command arguments to daemon
+        stop-daemon  Stop currently running crew-sudo daemon
 
     EOT
   when '-V', '--version'

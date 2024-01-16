@@ -10,6 +10,7 @@ def runas_daemon(argv)
   if File.exist?(SOCKET_PATH) && File.exist?(PID_FILE_PATH)
     if ARGV.include?('--replace')
       Process.kill('TERM', File.read(PID_FILE_PATH).to_i)
+      sleep 0.1 while File.exist?(SOCKET_PATH)
     else
       if IS_BASHRC
         warn "crew-sudo: Daemon started with PID #{File.read(PID_FILE_PATH)}"
@@ -17,7 +18,7 @@ def runas_daemon(argv)
         message <<~EOT, loglevel: :error
           crew-sudo daemon (process #{File.read(PID_FILE_PATH)}) is already running.
 
-          Use `#{PROGNAME} --daemon --replace` to replace the running daemon
+          Use `#{PROGNAME} --daemon --replace` to replace the running daemon.
         EOT
       end
       exit 1
