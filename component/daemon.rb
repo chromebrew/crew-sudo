@@ -41,6 +41,14 @@ def runas_daemon(argv)
   File.chown(0, 1000, SOCKET_PATH) if Process.uid.zero?
 
   Socket.accept_loop(@server) do |socket, _|
+    client_pid, client_uid, client_gid = socket.getsockopt(:SOL_SOCKET, :SO_PEERCRED).unpack('L*')
+
+    unless client_uid == 1000
+      message "Request from PID #{client_pid} rejected (only chronos user is allowed)"
+      socket.close
+      next
+    end
+
     Thread.new do
       # receive client's stdin/stdout/stderr io from client
       client_stdin, client_stdout, client_stderr = [socket.recv_io, socket.recv_io, socket.recv_io]
@@ -64,7 +72,7 @@ def runas_daemon(argv)
             chdir: client_request[:cwd]
       end
 
-      message "Process #{pid} spawned: #{cmdline}"
+      message "Process #{pid} spawned by client (#{client_pid}): #{cmdline}"
       send_event(socket, 'cmdSpawned', { pid: pid })
 
       # listen to client events
