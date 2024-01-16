@@ -7,38 +7,67 @@ require_relative '../lib/pty_helper'
 def runas_daemon(argv)
   $mode = :daemon
 
-  # daemonize
-  Process.daemon(false, true) unless ARGV.include?('--foreground')
+  if File.exist?(SOCKET_PATH) && File.exist?(PID_FILE_PATH)
+    if ARGV.include?('--replace')
+      Process.kill('TERM', File.read(PID_FILE_PATH).to_i)
+      sleep 0.1 while File.exist?(SOCKET_PATH)
+    else
+      if IS_BASHRC
+        warn "crew-sudo: Daemon started with PID #{File.read(PID_FILE_PATH)}"
+      else
+        message <<~EOT, loglevel: :error
+          crew-sudo daemon (process #{File.read(PID_FILE_PATH)}) is already running.
 
-  Process.setproctitle('crew-sudo daemon process')
-
-  warn "crew-sudo: Daemon started with PID #{Process.pid}"
-
-  # redirect output to log
-  $log = File.open(DAEMON_LOG_PATH, 'w')
-
-  $stdin.reopen('/dev/null')
-  $stdout.reopen($log)
-  $stderr.reopen($log)
-
-  [$log, $stdout, $stderr].each {|io| io.sync = true }
-
-  if Process.uid.zero?
-    message 'Daemon running with root permission.'
-  else
-    message "Daemon running under UID #{Process.uid}."
+          Use `#{PROGNAME} daemon --replace` to replace the running daemon.
+        EOT
+      end
+      exit 1
+    end
   end
 
-  message "Started with PID #{Process.pid}"
-
-  # create unix socket
-  @server = UNIXServer.new(SOCKET_PATH)
-  File.chmod(0o660, SOCKET_PATH)
+  @server = UNIXServer.new(SOCKET_PATH) # create unix socket
 
   # fix permission if we are running as root
-  File.chown(0, 1000, SOCKET_PATH) if Process.uid.zero?
+  File.chown(0, 1000, SOCKET_PATH) if Process.euid.zero?
+  File.chmod(0o660, SOCKET_PATH)
+
+  # daemonize
+  if ARGV.include?('--foreground')
+    warn "crew-sudo: Daemon started with PID #{Process.pid}"
+  else
+    Process.daemon(false, true)
+    warn "crew-sudo: Daemon started with PID #{Process.pid}"
+
+    # redirect output to log
+    $log = File.open(DAEMON_LOG_PATH, 'w')
+
+    $stdin.reopen('/dev/null')
+    $stdout.reopen($log)
+    $stderr.reopen($log)
+
+    [$log, $stdout, $stderr].each {|io| io.sync = true }
+  end
+
+  Process.setproctitle('crew-sudo daemon process')
+  File.write(PID_FILE_PATH, Process.pid)
+
+  message "Daemon running with PID #{Process.pid}"
+
+  if Process.euid.zero?
+    message 'Daemon running with root permission.'
+  else
+    message "Daemon running under UID #{Process.euid}."
+  end
 
   Socket.accept_loop(@server) do |socket, _|
+    client_pid, client_uid, client_gid = socket.getsockopt(:SOL_SOCKET, :SO_PEERCRED).unpack('L*')
+
+    unless client_uid == 1000
+      message "Request from PID #{client_pid} rejected (only chronos user is allowed)"
+      socket.close
+      next
+    end
+
     Thread.new do
       # receive client's stdin/stdout/stderr io from client
       client_stdin, client_stdout, client_stderr = [socket.recv_io, socket.recv_io, socket.recv_io]
@@ -62,7 +91,7 @@ def runas_daemon(argv)
             chdir: client_request[:cwd]
       end
 
-      message "Process #{pid} spawned: #{cmdline}"
+      message "Process #{pid} spawned by client (#{client_pid}): #{cmdline}"
       send_event(socket, 'cmdSpawned', { pid: pid })
 
       # listen to client events
@@ -103,6 +132,7 @@ def runas_daemon(argv)
     end
   end
 ensure
-  @server.close
+  @server&.close
   File.delete(SOCKET_PATH) if File.exist?(SOCKET_PATH)
+  File.delete(PID_FILE_PATH) if File.exist?(PID_FILE_PATH)
 end

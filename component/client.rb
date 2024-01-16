@@ -10,7 +10,13 @@ def restore_console
 end
 
 def runas_client(argv)
-  $mode     = :client
+  $mode = :client
+
+  unless Process.euid == 1000
+    message 'Client executed by non-chronos user, falling back to sudo...'
+    exec($0, *ARGV)
+  end
+
   is_tty    = $stdin.isatty && $stdout.isatty && $stderr.isatty
   $tty_attr = %x[/bin/stty -g].chomp if is_tty
   socket    = UNIXSocket.open(SOCKET_PATH) # connect to daemon

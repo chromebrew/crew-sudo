@@ -5,17 +5,25 @@ if [ ${EUID} != 0 ] && [ ! -w ${INSTALL_PREFIX} ]; then
   exit 1
 fi
 
-INSTALL_PREFIX="${CREW_PREFIX:-/usr/local}"
+if [ -z "${CREW_DEST_PREFIX}" ]; then
+  INSTALL_PREFIX="${CREW_DEST_PREFIX}"
+else
+  : "${INSTALL_PREFIX:=/usr/local}"
+fi
 
+mkdir -p ${INSTALL_PREFIX}/lib
 cp -r . ${INSTALL_PREFIX}/lib/crew-sudo
 
-ln -s ../lib/crew-sudo/crew-sudo ${INSTALL_PREFIX}/bin/crew-sudo
-ln -s ../lib/crew-sudo/crew-sudo ${INSTALL_PREFIX}/bin/sudo
+mkdir -p ${INSTALL_PREFIX}/bin
+ln -sf ../lib/crew-sudo/crew-sudo ${INSTALL_PREFIX}/bin/crew-sudo
+ln -sf ../lib/crew-sudo/crew-sudo ${INSTALL_PREFIX}/bin/sudo
 
 if [ -d ${INSTALL_PREFIX}/etc/env.d ]; then
   # installing under chromebrew
-  ln -s ../lib/crew-sudo/autostart/crew-sudo.sh ${INSTALL_PREFIX}/etc/env.d/crew_sudo
+  mkdir -p ${INSTALL_PREFIX}/etc/{env.d,bash.d}
+  ln -sf ../lib/crew-sudo/autostart/crew-sudo.sh ${INSTALL_PREFIX}/etc/env.d/crew_sudo
+  ln -sf ../lib/crew-sudo/autocomplete/crew-sudo.sh ${INSTALL_PREFIX}/etc/bash.d/crew_sudo
 else
   # installing without chromebrew, append the autostart script to bashrc
-  echo "source ${INSTALL_PREFIX}/lib/crew-sudo/autostart/crew-sudo.sh" > ~/.bashrc
+  echo "source ${INSTALL_PREFIX}/lib/crew-sudo/autostart/crew-sudo.sh" >> ~/.bashrc
 fi
