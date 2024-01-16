@@ -1,6 +1,6 @@
 #!/bin/bash -eu
 
-if [ -z "${CREW_DEST_PREFIX}" ]; then
+if [ -n "${CREW_DEST_PREFIX}" ]; then
   INSTALL_PREFIX="${CREW_DEST_PREFIX}"
 else
   : "${INSTALL_PREFIX:=/usr/local}"
