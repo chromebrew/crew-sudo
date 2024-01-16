@@ -130,7 +130,7 @@ def runas_daemon(argv)
     end
   end
 ensure
-  @server.close
+  @server&.close
   File.delete(SOCKET_PATH) if File.exist?(SOCKET_PATH)
   File.delete(PID_FILE_PATH) if File.exist?(PID_FILE_PATH)
 end
