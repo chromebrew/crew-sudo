@@ -12,9 +12,14 @@ end
 def runas_client(argv)
   $mode = :client
 
+  if File.read('/proc/self/status') =~ /^NoNewPrivs:[[:blank:]]+0$/
+    message 'Sudo is usable, falling back to sudo...'
+    exec('/usr/bin/sudo', *ARGV)
+  end
+
   unless Process.euid == 1000
     message 'Client executed by non-chronos user, falling back to sudo...'
-    exec($0, *ARGV)
+    exec('/usr/bin/sudo', *ARGV)
   end
 
   is_tty    = $stdin.isatty && $stdout.isatty && $stderr.isatty
