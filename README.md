@@ -1,12 +1,12 @@
 # crew-sudo
-Make `sudo` "works" on ChromeOS `crosh` shell (ChromeOS v117+) by redirecting sudo calls to VT-2 shell
+Make `sudo` "works" on ChromeOS `crosh` shell (ChromeOS v117+) by redirecting sudo calls to VT-2 shell.
 
 ## Background
 On ChromeOS v117, all Chrome-related processes (e.g. the ChromeOS UI) is executed with the `NO_NEW_PRIVS` bit, which means:
   - `suid/sgid`-bit is blocked, and thus no more `sudo`
   - This flag will be inherited by its subprocess (including `crosh`) and cannot be unset
 
-That benefits security. However, it is bad for Crouton/Chromebrew users.
+That benefits security. However, it is bad for Crouton/[Chromebrew]/(https://github.com/chromebrew/chromebrew) users.
 
 The official workaround for this is using the VT-2 shell (aka `frecon`) [^1], but `frecon` just sucks:
   - No clipboard support
@@ -14,7 +14,7 @@ The official workaround for this is using the VT-2 shell (aka `frecon`) [^1], bu
   - No HiDPI support
   - Poor compatibility with TUI programs
 
-So does there a way to call `sudo` in `crosh` but run it in VT-2? That's what this project does :)
+So is there a way to call `sudo` in `crosh` but run it in VT-2? That's what this project does :)
 
 [^1]: `sudo` works in VT-2 because the VT-2 process is independent of the browser process and executed without the `NO_NEW_PRIVS` bit
 
