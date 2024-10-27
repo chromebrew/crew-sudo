@@ -6,7 +6,7 @@ On ChromeOS v117, all Chrome-related processes (e.g. the ChromeOS UI) is execute
   - `suid/sgid`-bit is blocked, and thus no more `sudo`
   - This flag will be inherited by its subprocess (including `crosh`) and cannot be unset
 
-That benefits security. However, it is bad for Crouton/[Chromebrew]/(https://github.com/chromebrew/chromebrew) users.
+That benefits security. However, it is bad for [Crouton](https://github.com/dnschneid/crouton)/[Chromebrew]/(https://github.com/chromebrew/chromebrew) users.
 
 The official workaround for this is using the VT-2 shell (aka `frecon`) [^1], but `frecon` just sucks:
   - No clipboard support
